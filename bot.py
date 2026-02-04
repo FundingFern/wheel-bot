@@ -22,22 +22,36 @@ PAYMENT_LINKTREE = "https://linktr.ee/FundingFern"
 WHEEL_VALUES = [10, 15, 20, 25]
 
 # Colours
-PALE_PINK = (255, 105, 180)   # pink
-PALE_BLUE = (100, 160, 255)    # blue
+PALE_PINK = (255, 160, 200)   # soft glossy pink
+PALE_BLUE = (215, 190, 235)   # soft mauve (less purple)
 TEXT_DARK = (0, 0, 0)         # black text
-BG = (230, 215, 245)          # lilac background
+BG = (190, 215, 200)   # slightly darker sage green
+
+SPIN_SECONDS = 8
+REVEAL_BUFFER = 0.5
+
 
 
 def _ease_out_cubic(t: float) -> float:
     return 1 - (1 - t) ** 3
 
+class MyClient(discord.Client):
+    def __init__(self):
+        super().__init__(intents=discord.Intents.default())
+        self.tree = app_commands.CommandTree(self)
 
-def make_spin_gif(result_value: int, size: int = 420) -> bytes:
-    frames = 140          # ~10 seconds
-    frame_duration = 0.025
+    async def setup_hook(self):
+        await self.tree.sync()
 
-    idx = WHEEL_VALUES.index(result_value)
-    n = len(WHEEL_VALUES)
+def make_spin_gif(values: list[int], result_value: int, size: int = 420) -> bytes:
+    SPIN_SECONDS = 8
+    frames = 120
+    frame_duration = 0.058
+
+    
+
+    idx = values.index(result_value)
+    n = len(values)
     seg_angle = 360 / n
 
     pointer_angle = -90
@@ -45,7 +59,8 @@ def make_spin_gif(result_value: int, size: int = 420) -> bytes:
     final_rotation = pointer_angle - chosen_center
 
     extra_turns = 4 * 360
-    start_rotation = final_rotation + extra_turns + random.randint(0, 359)
+    start_rotation = final_rotation + extra_turns
+
 
     radius = size // 2 - 20
     center = (size // 2, size // 2)
@@ -71,11 +86,23 @@ def make_spin_gif(result_value: int, size: int = 420) -> bytes:
             center[1] + radius,
         ]
 
-        for i, val in enumerate(WHEEL_VALUES):
-            color = PALE_PINK if i % 2 == 0 else PALE_BLUE
+        for i, val in enumerate(values):
             a0 = rot + i * seg_angle
-            a1 = rot + (i + 1) * seg_angle
-            draw.pieslice(bbox, start=a0, end=a1, fill=color, outline=(230, 230, 230), width=3)
+            a1 = a0 + seg_angle
+
+            draw.pieslice(
+                bbox,
+                start=a0,
+                end=a1,
+                fill=PALE_PINK if i % 2 == 0 else PALE_BLUE,
+                outline=(255, 255, 255),
+                width=3,
+            )
+
+
+           
+
+
 
             mid = math.radians((a0 + a1) / 2)
             tx = center[0] + int(math.cos(mid) * (radius * 0.62))
@@ -83,6 +110,13 @@ def make_spin_gif(result_value: int, size: int = 420) -> bytes:
             label = str(val)
             tw, th = draw.textbbox((0, 0), label, font=font)[2:]
             draw.text((tx - tw / 2, ty - th / 2), label, fill=TEXT_DARK, font=font)
+        # White border around the wheel
+        
+        draw.ellipse(
+            bbox,
+            outline=(255, 255, 255),
+            width=4,
+        )
 
         draw.ellipse(
             [center[0]-28, center[1]-28, center[0]+28, center[1]+28],
@@ -91,9 +125,11 @@ def make_spin_gif(result_value: int, size: int = 420) -> bytes:
             width=3,
         )
 
+
         px, py = center[0], center[1] - radius - 4
         pointer = [(px, py), (px - 16, py + 34), (px + 16, py + 34)]
-        draw.polygon(pointer, fill=(0, 0, 0), outline=(0, 0, 0))
+        draw.polygon(pointer, fill=(255, 255, 255))
+
 
         images.append(im)
 
@@ -101,26 +137,43 @@ def make_spin_gif(result_value: int, size: int = 420) -> bytes:
     imageio.mimsave(buf, images, format="GIF", duration=frame_duration)
     return buf.getvalue()
 
-
-class MyClient(discord.Client):
-    def __init__(self):
-        super().__init__(intents=discord.Intents.default())
-        self.tree = app_commands.CommandTree(self)
-
-    async def setup_hook(self):
-        await self.tree.sync()
-
-
 client = MyClient()
 
-@client.tree.command(name="spin", description="Spin the wheel 🎡")
-async def spin(interaction: discord.Interaction):
+@client.tree.command(name="spin", description="Spin a number in fives between your min and max 🎡")
+@app_commands.describe(min="Minimum (10–200, must be multiple of 5)", max="Maximum (10–200, must be multiple of 5)")
+async def spin(interaction: discord.Interaction, min: int, max: int):
+
+
     await interaction.response.defer(thinking=True)
 
-    result = random.choice(WHEEL_VALUES)
-    gif_bytes = make_spin_gif(result)
+    # Validate inputs
+    if min < 10:
+        await interaction.followup.send("❌ Minimum must be at least 10.")
+        return
+    if max > 200:
+        await interaction.followup.send("❌ Maximum must be 200 or less.")
+        return
+    if min >= max:
+        await interaction.followup.send("❌ Minimum must be less than maximum.")
+        return
+    if (min % 5) != 0 or (max % 5) != 0:
+        await interaction.followup.send("❌ Min and max must be multiples of 5 (e.g., 10, 15, 20…).")
+        return
 
-    file = discord.File(fp=io.BytesIO(gif_bytes), filename="spin.gif")
+    # Pick a number in steps of 5
+    values = list(range(min, max + 1, 5))
+    result = random.choice(values)
+    gif_bytes = make_spin_gif(values, result)
+
+    file = discord.File(fp=io.BytesIO(gif_bytes), filename=f"spin_{min}_{max}_{result}.gif")
+
+
+   
+  
+    
+
+    
+
 
     # 1) Send the spinning wheel first (no amount revealed)
     await interaction.followup.send(
@@ -129,7 +182,8 @@ async def spin(interaction: discord.Interaction):
     )
 
     import asyncio
-    await asyncio.sleep(8)
+    await asyncio.sleep(10)
+
 
     # 2) Reveal the amount after the wheel stops
     await interaction.followup.send(
