@@ -65,12 +65,23 @@ def make_spin_gif(values: list[int], result_value: int, size: int = 420) -> byte
     radius = size // 2 - 20
     center = (size // 2, size // 2)
 
-        # Auto font size: bigger for fewer segments, smaller for many segments
+    # Auto font size: bigger for fewer segments, smaller for many segments
+    font_size = 42 if len(values) <= 14 else 28
     try:
-        font_size = 34 if len(values) <= 14 else 24
-        font = ImageFont.truetype("Arial.ttf", font_size)
+        # Works on most Linux servers (Render)
+        font = ImageFont.truetype("DejaVuSans.ttf", font_size)
     except Exception:
-        font = ImageFont.load_default()
+        try:
+            # Works on some Macs/Windows if available
+            font = ImageFont.truetype("Arial.ttf", font_size)
+        except Exception:
+            font = ImageFont.load_default()
+
+
+
+
+
+
 
     
     
