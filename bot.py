@@ -66,7 +66,7 @@ def make_spin_gif(values: list[int], result_value: int, size: int = 420) -> byte
     center = (size // 2, size // 2)
 
     # Auto font size: bigger for fewer segments, smaller for many segments
-    font_size = 42 if len(values) <= 14 else 28
+    font_size = 34 if len(values) <= 14 else 26
     try:
         # Works on most Linux servers (Render)
         font = ImageFont.truetype("DejaVuSans.ttf", font_size)
