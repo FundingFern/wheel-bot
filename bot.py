@@ -12,6 +12,7 @@ from discord import app_commands
 
 import imageio.v2 as imageio
 from PIL import Image, ImageDraw, ImageFont
+import asyncio
 
 TOKEN = os.environ.get("DISCORD_TOKEN")
 if not TOKEN:
@@ -40,10 +41,9 @@ class MyClient(discord.Client):
         super().__init__(intents=discord.Intents.default())
         self.tree = app_commands.CommandTree(self)
 
-  async def setup_hook(self):
-    pass
+    async def setup_hook(self):
+        await self.tree.sync()
 
-  
 
 def make_spin_gif(values: list[int], result_value: int, size: int = 420) -> bytes:
     SPIN_SECONDS = 8
@@ -158,10 +158,18 @@ def make_spin_gif(values: list[int], result_value: int, size: int = 420) -> byte
 
 client = MyClient()
 
+import os
+
+TOKEN = os.getenv("DISCORD_TOKEN")
+if not TOKEN:
+    raise RuntimeError("DISCORD_TOKEN is not set")
+
 @client.tree.command(name="spin", description="Spin a number in fives between your min and max 🎡")
 @app_commands.describe(min="Minimum (10–200, must be multiple of 5)", max="Maximum (10–200, must be multiple of 5)")
 async def spin(interaction: discord.Interaction, min: int, max: int):
-    await interaction.response.send_message("🎡 **Spinning...**")
+    await interaction.response.defer()
+
+
 
 
     
@@ -195,15 +203,18 @@ async def spin(interaction: discord.Interaction, min: int, max: int):
     
 
 
-    # 1) Send the spinning wheel first (no amount revealed)
-        await interaction.followup.send(file=file)
+ # 1) Send the spinning wheel first (no amount revealed)
+    await interaction.followup.send(file=file)
+
+ 
 
     
         
     
 
-    import asyncio
     await asyncio.sleep(10)
+   
+    
 
 
     # 2) Reveal the amount after the wheel stops
