@@ -57,10 +57,11 @@ def make_spin_gif(values: list[int], result_value: int, size: int = 420) -> byte
     seg_angle = 360 / n
 
     pointer_angle = -90
-    chosen_center = (idx + 0.5) * seg_angle
+    jitter = random.uniform(-0.35, 0.35) * seg_angle
+    chosen_center = (idx + 0.5) * seg_angle + jitter
     final_rotation = pointer_angle - chosen_center
 
-    extra_turns = 4 * 360
+    extra_turns = random.randint(5, 9) * 360
     start_rotation = final_rotation + extra_turns
 
 
