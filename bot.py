@@ -226,5 +226,22 @@ async def spin(interaction: discord.Interaction, min: int, max: int):
         )
     )
 
-client.run(TOKEN)
+import time
+import discord
+
+backoff = 60  # start at 60 seconds
+
+while True:
+    try:
+        client.run(TOKEN)
+    except discord.errors.HTTPException as e:
+        # If Discord blocks/rate-limits login, wait before trying again
+        print(f"Discord HTTPException on login: {e}. Sleeping {backoff}s then retrying...")
+        time.sleep(backoff)
+        backoff = min(backoff * 2, 1800)  # max 30 minutes
+    except Exception as e:
+        # Any other unexpected crash: small delay then retry
+        print(f"Unexpected error: {e}. Sleeping 60s then retrying...")
+        time.sleep(60)
+        backoff = 60
 
